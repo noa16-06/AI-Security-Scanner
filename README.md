@@ -14,7 +14,7 @@ Pull the model and install the Python dependencies:
 
 ```bash
 ollama pull qwen2.5:7b
-python -m pip install ollama requests
+python -m pip install ollama rich
 ```
 
 ## Usage
@@ -29,7 +29,7 @@ The scanner reads the entire file and sends its contents to the Ollama host. By 
 API_HOST=http://localhost:11434 python scanner.py path/to/source-file
 ```
 
-The availability check currently targets `localhost:11434` directly, so configuring a remote `API_HOST` may not work correctly. The scanner also sends an `x-some-header` header; `HEADER_VALUE` controls its value and defaults to a placeholder.
+The scanner also sends an `x-some-header` header; `HEADER_VALUE` controls its value and defaults to a placeholder.
 
 ## Limitations
 

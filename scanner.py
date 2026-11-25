@@ -1,73 +1,62 @@
 import os
 import sys
-from urllib import request
-from ollama import Client, ChatResponse, chat
-from requests import get
+from ollama import Client
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
 
-client = Client(host=os.getenv('API_HOST', 'http://localhost:11434'),headers={'x-some-header': os.getenv('HEADER_VALUE', 'some-value')})
+client = Client(
+    host=os.getenv("API_HOST", "http://localhost:11434"),
+    headers={"x-some-header": os.getenv("HEADER_VALUE", "some-value")},
+)
+console = Console()
 
-security_prompt = """You are a security scanner. Your task is to identify
- potential security vulnerabilities in the provided code.
- Please analyze the code and provide a detailed report highlighting
- any security issues, risks, or best practices that should be followed
- to enhance the security of the code. Response in a structured format, including the following information for each identified issue:
+security_prompt = """Review this source code for concrete security issues.
+Return a concise Markdown report with:
+- A short summary
+- Distinct findings, ordered by severity
+- For each finding: severity, location, why it matters, impact, and a concise fix
 
- For each issue, provide:
-  1. Vulnerability type
-  2. Why it is vulnerable (1 sentence)
-  3. Impact (1 sentence)
-  4. Secure code fix
- 
- Code:
+Do not repeat the source code, duplicate findings, or include whole-file rewrites.
+Only report issues supported by the code. If there are no findings, say so.
+
+Source code:
 {code}
 """
 
 # Check if the user provided a file path as an argument
 if len(sys.argv) < 2 or not os.path.isfile(sys.argv[1]):
-   print("Usage: python scanner.py <path_to_code_file>")
-   sys.exit(1)
+    console.print("[yellow]Usage: python scanner.py <path_to_code_file>[/]")
+    sys.exit(1)
 
-# Read the code from the provided file path
-print(r"""
-⠀⠀⠀⠀⠀⣀⣠⠤⠶⠶⣖⡛⠛⠿⠿⠯⠭⠍⠉⣉⠛⠚⠛⠲⣄⠀⠀⠀⠀⠀
-⠀⠀⢀⡴⠋⠁⠀⡉⠁⢐⣒⠒⠈⠁⠀⠀⠀⠈⠁⢂⢅⡂⠀⠀⠘⣧⠀⠀⠀⠀
-⠀⠀⣼⠀⠀⠀⠁⠀⠀⠀⠂⠀⠀⠀⠀⢀⣀⣤⣤⣄⡈⠈⠀⠀⠀⠘⣇⠀⠀⠀
-⢠⡾⠡⠄⠀⠀⠾⠿⠿⣷⣦⣤⠀⠀⣾⣋⡤⠿⠿⠿⠿⠆⠠⢀⣀⡒⠼⢷⣄⠀
-⣿⠊⠊⠶⠶⢦⣄⡄⠀⢀⣿⠀⠀⠀⠈⠁⠀⠀⠙⠳⠦⠶⠞⢋⣍⠉⢳⡄⠈⣧
-⢹⣆⡂⢀⣿⠀⠀⡀⢴⣟⠁⠀⢀⣠⣘⢳⡖⠀⠀⣀⣠⡴⠞⠋⣽⠷⢠⠇⠀⣼
-⠀⢻⡀⢸⣿⣷⢦⣄⣀⣈⣳⣆⣀⣀⣤⣭⣴⠚⠛⠉⣹⣧⡴⣾⠋⠀⠀⣘⡼⠃
-⠀⢸⡇⢸⣷⣿⣤⣏⣉⣙⣏⣉⣹⣁⣀⣠⣼⣶⡾⠟⢻⣇⡼⠁⠀⠀⣰⠋⠀⠀
-⠀⢸⡇⠸⣿⡿⣿⢿⡿⢿⣿⠿⠿⣿⠛⠉⠉⢧⠀⣠⡴⠋⠀⠀⠀⣠⠇⠀⠀⠀
-⠀⢸⠀⠀⠹⢯⣽⣆⣷⣀⣻⣀⣀⣿⣄⣤⣴⠾⢛⡉⢄⡢⢔⣠⠞⠁⠀⠀⠀⠀
-⠀⢸⠀⠀⠀⠢⣀⠀⠈⠉⠉⠉⠉⣉⣀⠠⣐⠦⠑⣊⡥⠞⠋⠀⠀⠀⠀⠀⠀⠀
-⠀⢸⡀⠀⠁⠂⠀⠀⠀⠀⠀⠀⠒⠈⠁⣀⡤⠞⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠙⠶⢤⣤⣤⣤⣤⡤⠴⠖⠚⠛⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-""")
+console.print(
+    Panel.fit(
+        "[bold]AI Security Scanner[/bold]\n[dim]Ollama-powered code review[/dim]",
+        border_style="cyan",
+    )
+)
 code_file_path = sys.argv[1]
 with open(code_file_path, 'r') as code_file:
     code_content = code_file.read()
 
 prompt = security_prompt.format(code=code_content)
 
-try: # check if the model is online before sending the request
+try:
+    console.print(f"[dim]Scanning {code_file_path}...[/]")
     response = client.chat(
-      model='qwen2.5:7b',
-      messages=[
-        {
-          'role': 'user',
-          'content': prompt,
-        },
-      ],
+        model="qwen2.5:7b",
+        messages=[{"role": "user", "content": prompt}],
     )
-    online_check = get("http://localhost:11434/v1/models/qwen2.5:7b")
-    if online_check.status_code == 200:
-        print("Model is online and ready to process the request.")
-    else:
-        print("Model is not online. Please check the server status.")
-
-    print("Security Scan Report:")
-    print(response.message.content)
+    console.print("[green]✓ Scan complete[/]")
+    console.print(
+        Panel(
+            Markdown(response.message.content),
+            title="Security scan report",
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
 
 # Handle exceptions that may occur during the request
 except Exception as e:
-    print(f"Connection failed {e}")
+    console.print(f"[bold red]Scan failed:[/] {e}")
